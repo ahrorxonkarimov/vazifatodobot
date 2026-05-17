@@ -1,13 +1,5 @@
 {
   "version": 2,
-  "buildCommand": "",
-  "outputDirectory": ".",
-  "functions": {
-    "api/bot.js": {
-      "maxDuration": 10,
-      "runtime": "nodejs18.x"
-    }
-  },
   "routes": [
     {
       "src": "/api/bot",
