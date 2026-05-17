@@ -255,8 +255,8 @@ function isSoon(task) {
 }
 
 const CAT_LABELS = {
-  dars:'📖 Dars', sport:'🏋️ Sport', uy:'🏠 Uy ishi',
-  shaxsiy:'😊 Shaxsiy', boshqa:'📌 Boshqa'
+  dars:'📖 Dars', uyvazifa:'📝 Uy vazifasi', imtihon:'📋 Imtihon',
+  loyiha:'💡 Loyiha', kitob:'📚 Kitob', shaxsiy:'😊 Shaxsiy'
 };
 
 function formatDeadline(dl) {
@@ -310,7 +310,7 @@ function buildTaskCard(task) {
   const deadlineBadge = task.deadline
     ? `<span class="task-badge deadline${overdueClass}">📅 ${formatDeadline(task.deadline)}</span>`
     : '';
-  const catBadge = task.category && task.category !== 'boshqa'
+  const catBadge = task.category
     ? `<span class="task-badge category">${CAT_LABELS[task.category] || task.category}</span>`
     : '';
 
@@ -366,7 +366,7 @@ function addTask() {
     text,
     done:      false,
     createdAt: Date.now(),
-    category:  document.getElementById('taskCategory').value || 'boshqa',
+    category:  document.getElementById('taskCategory').value || 'dars',
     stars:     newTaskStars,
     deadline:  document.getElementById('taskDeadline').value || '',
     reminder:  document.getElementById('taskReminder').value || '',
@@ -382,7 +382,7 @@ function addTask() {
   taskInput.value = '';
   document.getElementById('taskDeadline').value  = '';
   document.getElementById('taskReminder').value  = '';
-  document.getElementById('taskCategory').value  = 'boshqa';
+  document.getElementById('taskCategory').value  = 'dars';
   setStars(0, 'new');
   setTaskColor('', 'new');
 
