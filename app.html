@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VazifaBot – Mening Vazifalarim</title>
+  <meta name="description" content="Vazifalaringizni boshqaring: deadline, kategoriya, progress va ko'proq." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+<!-- ===== SIDEBAR ===== -->
+<aside class="sidebar" id="sidebar" aria-label="Yon panel">
+  <div class="sidebar-header">
+    <div class="brand">
+      <div class="brand-icon">📚</div>
+      <div class="brand-text">
+        <span class="brand-name">VazifaBot</span>
+        <span class="brand-tagline">Talaba yordamchi</span>
+      </div>
+    </div>
+    <button class="sidebar-close" id="sidebarClose" aria-label="Yopish">✕</button>
+  </div>
+
+  <!-- User info -->
+  <div class="sidebar-user" id="sidebarUser">
+    <div class="sidebar-avatar" id="sidebarAvatar">👤</div>
+    <div class="sidebar-user-info">
+      <div class="sidebar-user-name" id="sidebarName">Foydalanuvchi</div>
+      <div class="sidebar-user-id" id="sidebarTid"></div>
+    </div>
+  </div>
+
+  <!-- Filter by category -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">📂 Kategoriyalar</div>
+    <div class="cat-filter-list" id="catFilterList">
+      <button class="cat-filter-btn active" data-cat="all" id="catAll">🔷 Hammasi</button>
+      <button class="cat-filter-btn" data-cat="dars" id="catDars">📖 Dars</button>
+      <button class="cat-filter-btn" data-cat="sport" id="catSport">🏋️ Sport</button>
+      <button class="cat-filter-btn" data-cat="uy" id="catUy">🏠 Uy ishi</button>
+      <button class="cat-filter-btn" data-cat="shaxsiy" id="catShaxsiy">😊 Shaxsiy</button>
+      <button class="cat-filter-btn" data-cat="boshqa" id="catBoshqa">📌 Boshqa</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">📊 Statistika</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">Jami</div>
+      </div>
+      <div class="stat-box stat-done">
+        <div class="stat-num" id="statDone">0</div>
+        <div class="stat-label">Bajarildi</div>
+      </div>
+      <div class="stat-box stat-pending">
+        <div class="stat-num" id="statPending">0</div>
+        <div class="stat-label">Kutmoqda</div>
+      </div>
+      <div class="stat-box stat-overdue">
+        <div class="stat-num" id="statOverdue">0</div>
+        <div class="stat-label">Muddati o'tgan</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="sidebar-section">
+    <div class="sidebar-section-title">⚙️ Sozlamalar</div>
+    <div class="setting-row">
+      <span>🌙 Tungi rejim</span>
+      <label class="toggle" for="darkToggle">
+        <input type="checkbox" id="darkToggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <span>🔔 Eslatmalar</span>
+      <label class="toggle" for="notifToggle">
+        <input type="checkbox" id="notifToggle" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <span>🎨 Rang tanlash</span>
+      <div class="color-swatches" id="colorSwatches">
+        <button class="swatch active" data-color="#6C5CE7" style="background:#6C5CE7" aria-label="Binafsha"></button>
+        <button class="swatch" data-color="#00CEC9" style="background:#00CEC9" aria-label="Ko'k-yashil"></button>
+        <button class="swatch" data-color="#FD79A8" style="background:#FD79A8" aria-label="Pushti"></button>
+        <button class="swatch" data-color="#FDCB6E" style="background:#FDCB6E" aria-label="Sariq"></button>
+        <button class="swatch" data-color="#00B894" style="background:#00B894" aria-label="Yashil"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="sidebar-section sidebar-actions">
+    <button class="action-btn danger" id="clearCompletedBtn">
+      🧹 Bajarilganlarni tozalash
+    </button>
+    <button class="action-btn" id="exportBtn">
+      📤 Export (JSON)
+    </button>
+    <a href="index.html" class="action-btn logout-btn" id="logoutBtn">
+      🚪 Chiqish
+    </a>
+  </div>
+</aside>
+
+<!-- ===== OVERLAY ===== -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- ===== MAIN ===== -->
+<main class="main-wrap">
+
+  <!-- Top bar -->
+  <header class="topbar" id="topbar">
+    <div class="topbar-left">
+      <button class="menu-btn" id="menuBtn" aria-label="Menyu">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-title">
+        <span class="greeting" id="greeting">Assalomu alaykum</span>
+        <span class="topbar-name" id="topbarName">👋</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="searchToggleBtn" aria-label="Qidiruv" title="Qidiruv">🔍</button>
+      <button class="icon-btn" id="notifBtn" aria-label="Eslatma" title="Eslatma so'rash">🔔</button>
+      <div class="topbar-avatar" id="topbarAvatar">👤</div>
+    </div>
+  </header>
+
+  <!-- Search bar -->
+  <div class="search-bar-wrap" id="searchBarWrap">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Vazifa qidirish..." aria-label="Qidiruv" />
+      <button class="search-clear" id="searchClear" aria-label="Tozalash">✕</button>
+    </div>
+  </div>
+
+  <!-- Global progress -->
+  <div class="global-progress-wrap" id="globalProgressWrap">
+    <div class="global-progress-header">
+      <span class="gp-label">Umumiy progress</span>
+      <span class="gp-percent" id="gpPercent">0%</span>
+    </div>
+    <div class="global-progress-bar">
+      <div class="global-progress-fill" id="gpFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Add task section -->
+  <section class="add-task-section" aria-label="Yangi vazifa qo'shish">
+    <div class="add-task-card">
+      <div class="add-task-main">
+        <input
+          type="text"
+          id="taskInput"
+          placeholder="Yangi vazifa qo'shing... (Enter yoki ➕)"
+          aria-label="Vazifa matni"
+          maxlength="300"
+          autocomplete="off"
+        />
+        <button class="add-btn" id="addBtn" aria-label="Qo'shish">
+          <span class="add-btn-icon">➕</span>
+          <span class="add-btn-text">Qo'shish</span>
+        </button>
+      </div>
+
+      <!-- Extended options (collapsed by default) -->
+      <div class="task-options" id="taskOptions">
+        <button class="options-toggle" id="optionsToggle" aria-expanded="false">
+          ⚙️ Qo'shimcha imkoniyatlar <span class="options-arrow">▼</span>
+        </button>
+        <div class="options-body" id="optionsBody">
+          <div class="options-row">
+            <!-- Category -->
+            <div class="option-group">
+              <label class="option-label" for="taskCategory">🏷️ Kategoriya</label>
+              <select id="taskCategory" class="option-select">
+                <option value="boshqa">📌 Boshqa</option>
+                <option value="dars">📖 Dars</option>
+                <option value="sport">🏋️ Sport</option>
+                <option value="uy">🏠 Uy ishi</option>
+                <option value="shaxsiy">😊 Shaxsiy</option>
+              </select>
+            </div>
+
+            <!-- Priority stars -->
+            <div class="option-group">
+              <label class="option-label">⭐ Muhimlik</label>
+              <div class="star-picker" id="starPicker" role="group" aria-label="Muhimlik darajasi">
+                <button class="star" data-val="1" aria-label="1 yulduz">★</button>
+                <button class="star" data-val="2" aria-label="2 yulduz">★</button>
+                <button class="star" data-val="3" aria-label="3 yulduz">★</button>
+                <button class="star" data-val="4" aria-label="4 yulduz">★</button>
+                <button class="star" data-val="5" aria-label="5 yulduz">★</button>
+              </div>
+            </div>
+
+            <!-- Deadline -->
+            <div class="option-group">
+              <label class="option-label" for="taskDeadline">📅 Muddat (deadline)</label>
+              <input type="datetime-local" id="taskDeadline" class="option-input" />
+            </div>
+
+            <!-- Reminder -->
+            <div class="option-group">
+              <label class="option-label" for="taskReminder">🔔 Eslatma vaqti</label>
+              <input type="datetime-local" id="taskReminder" class="option-input" />
+            </div>
+
+            <!-- Color tag -->
+            <div class="option-group">
+              <label class="option-label">🎨 Rang</label>
+              <div class="task-color-picker" id="taskColorPicker">
+                <button class="task-color-swatch active" data-color="" style="background: var(--primary)" aria-label="Standart"></button>
+                <button class="task-color-swatch" data-color="#FF6B6B" style="background:#FF6B6B" aria-label="Qizil"></button>
+                <button class="task-color-swatch" data-color="#FDCB6E" style="background:#FDCB6E" aria-label="Sariq"></button>
+                <button class="task-color-swatch" data-color="#00B894" style="background:#00B894" aria-label="Yashil"></button>
+                <button class="task-color-swatch" data-color="#74B9FF" style="background:#74B9FF" aria-label="Ko'k"></button>
+                <button class="task-color-swatch" data-color="#FD79A8" style="background:#FD79A8" aria-label="Pushti"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filter/Sort bar -->
+  <div class="filter-sort-bar">
+    <div class="filter-tabs" id="filterTabs" role="tablist">
+      <button class="filter-tab active" data-filter="all" role="tab" aria-selected="true">Hammasi</button>
+      <button class="filter-tab" data-filter="active" role="tab" aria-selected="false">Faol</button>
+      <button class="filter-tab" data-filter="done" role="tab" aria-selected="false">Bajarildi</button>
+      <button class="filter-tab" data-filter="overdue" role="tab" aria-selected="false">⚠️ Muddati o'tgan</button>
+    </div>
+    <div class="sort-wrap">
+      <label class="sr-only" for="sortSelect">Saralash</label>
+      <select id="sortSelect" class="sort-select" aria-label="Saralash">
+        <option value="newest">🕒 Yangi avval</option>
+        <option value="oldest">📅 Eski avval</option>
+        <option value="deadline">⏰ Muddat bo'yicha</option>
+        <option value="priority">⭐ Muhimlik bo'yicha</option>
+        <option value="alpha">🔤 Alifbo bo'yicha</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Task list -->
+  <section class="task-list-section" aria-label="Vazifalar ro'yxati">
+    <div id="taskList" class="task-list"></div>
+
+    <!-- Empty state -->
+    <div id="emptyState" class="empty-state hidden">
+      <div class="empty-illustration">📭</div>
+      <h3 class="empty-title">Hozircha vazifa yo'q</h3>
+      <p class="empty-subtitle">Yuqoridagi maydondan birinchi vazifangizni qo'shing!</p>
+    </div>
+
+    <!-- No results state -->
+    <div id="noResultsState" class="empty-state hidden">
+      <div class="empty-illustration">🔍</div>
+      <h3 class="empty-title">Natija topilmadi</h3>
+      <p class="empty-subtitle">Boshqa kalit so'z bilan qidiring</p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== EDIT MODAL ===== -->
+<div class="modal-overlay hidden" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+  <div class="modal-card" id="editModalCard">
+    <div class="modal-header">
+      <h2 class="modal-title" id="editModalTitle">✏️ Vazifani tahrirlash</h2>
+      <button class="modal-close" id="editModalClose" aria-label="Yopish">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="editTaskText">Vazifa matni</label>
+        <textarea id="editTaskText" class="form-textarea" rows="3" maxlength="300" placeholder="Vazifa matni..."></textarea>
+        <div class="char-count"><span id="editCharCount">0</span>/300</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="editCategory">Kategoriya</label>
+          <select id="editCategory" class="form-select">
+            <option value="boshqa">📌 Boshqa</option>
+            <option value="dars">📖 Dars</option>
+            <option value="sport">🏋️ Sport</option>
+            <option value="uy">🏠 Uy ishi</option>
+            <option value="shaxsiy">😊 Shaxsiy</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Muhimlik</label>
+          <div class="star-picker" id="editStarPicker" role="group" aria-label="Muhimlik darajasi">
+            <button class="star" data-val="1">★</button>
+            <button class="star" data-val="2">★</button>
+            <button class="star" data-val="3">★</button>
+            <button class="star" data-val="4">★</button>
+            <button class="star" data-val="5">★</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="editDeadline">📅 Muddat</label>
+          <input type="datetime-local" id="editDeadline" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="editReminder">🔔 Eslatma</label>
+          <input type="datetime-local" id="editReminder" class="form-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rang</label>
+        <div class="task-color-picker" id="editColorPicker">
+          <button class="task-color-swatch active" data-color="" style="background: var(--primary)" aria-label="Standart"></button>
+          <button class="task-color-swatch" data-color="#FF6B6B" style="background:#FF6B6B" aria-label="Qizil"></button>
+          <button class="task-color-swatch" data-color="#FDCB6E" style="background:#FDCB6E" aria-label="Sariq"></button>
+          <button class="task-color-swatch" data-color="#00B894" style="background:#00B894" aria-label="Yashil"></button>
+          <button class="task-color-swatch" data-color="#74B9FF" style="background:#74B9FF" aria-label="Ko'k"></button>
+          <button class="task-color-swatch" data-color="#FD79A8" style="background:#FD79A8" aria-label="Pushti"></button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="editCancelBtn">Bekor qilish</button>
+      <button class="btn btn-primary" id="editSaveBtn">💾 Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ===== CONFETTI CONTAINER ===== -->
+<div id="confettiContainer" aria-hidden="true"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

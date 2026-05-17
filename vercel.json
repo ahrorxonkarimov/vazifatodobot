@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "buildCommand": "",
+  "outputDirectory": ".",
+  "functions": {
+    "api/bot.js": {
+      "maxDuration": 10,
+      "runtime": "nodejs18.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/bot",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ],
+  "env": {
+    "BOT_TOKEN": "@bot_token",
+    "WEBAPP_URL": "@webapp_url"
+  }
+}

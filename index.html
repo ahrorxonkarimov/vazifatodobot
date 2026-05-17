@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VazifaBot – Talaba To-Do List</title>
+  <meta name="description" content="O'zbekiston talabalari uchun aqlli vazifa boshqaruvchi. Telegram orqali kiring va vazifalaringizni boshqaring." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ---- LOGIN PAGE SPECIFIC ---- */
+    body.login-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-main);
+      position: relative;
+      overflow: hidden;
+    }
+    body.login-page::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 20%, rgba(108,92,231,0.35) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 80%, rgba(0,206,201,0.25) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(253,121,168,0.15) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .floating-particles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.15;
+      animation: floatUp linear infinite;
+    }
+
+    @keyframes floatUp {
+      0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+      10%  { opacity: 0.15; }
+      90%  { opacity: 0.1; }
+      100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+    }
+
+    .login-card {
+      position: relative;
+      z-index: 1;
+      background: var(--glass-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      border-radius: 32px;
+      padding: 56px 48px;
+      width: 100%;
+      max-width: 460px;
+      text-align: center;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05) inset;
+      animation: cardIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(40px) scale(0.95); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .login-logo {
+      width: 90px;
+      height: 90px;
+      border-radius: 26px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      margin: 0 auto 28px;
+      box-shadow: 0 16px 40px rgba(108,92,231,0.4);
+      animation: logoPulse 3s ease-in-out infinite;
+    }
+    @keyframes logoPulse {
+      0%,100% { box-shadow: 0 16px 40px rgba(108,92,231,0.4); }
+      50%      { box-shadow: 0 16px 60px rgba(108,92,231,0.7); }
+    }
+
+    .login-title {
+      font-family: 'Nunito', sans-serif;
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+    .login-subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 36px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+    .feature-item {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 14px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      transition: all 0.3s ease;
+    }
+    .feature-item:hover {
+      border-color: var(--primary);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+    .feature-icon { font-size: 1.2rem; }
+
+    .telegram-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 18px 32px;
+      background: linear-gradient(135deg, #2AABEE, #229ED9);
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 8px 32px rgba(42,171,238,0.4);
+      margin-bottom: 16px;
+    }
+    .telegram-btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 16px 48px rgba(42,171,238,0.5);
+    }
+    .telegram-btn:active { transform: scale(0.98); }
+
+    .telegram-icon {
+      width: 28px;
+      height: 28px;
+    }
+
+    .demo-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px 24px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .demo-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(108,92,231,0.1);
+    }
+
+    .already-logged {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: white;
+      margin: 0 auto 8px;
+    }
+    .welcome-text {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .enter-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 18px 32px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      font-family: 'Nunito', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 8px 32px rgba(108,92,231,0.4);
+    }
+    .enter-btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      box-shadow: 0 16px 48px rgba(108,92,231,0.5);
+    }
+
+    .divider {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin: 8px 0;
+    }
+
+    .footer-text {
+      margin-top: 24px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .footer-text a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body class="login-page">
+
+  <!-- Floating particles -->
+  <div class="floating-particles" id="particles"></div>
+
+  <div class="login-card">
+    <!-- Logo -->
+    <div class="login-logo">📚</div>
+
+    <!-- Auth section - not logged in -->
+    <div id="authSection">
+      <h1 class="login-title">VazifaBot</h1>
+      <p class="login-subtitle">O'zbekiston talabalari uchun aqlli vazifa boshqaruvchi.<br/>Telegram orqali tezkor kirish.</p>
+
+      <!-- Features grid -->
+      <div class="features-grid">
+        <div class="feature-item"><span class="feature-icon">📅</span> Deadline</div>
+        <div class="feature-item"><span class="feature-icon">🏷️</span> Kategoriya</div>
+        <div class="feature-item"><span class="feature-icon">⭐</span> Muhimlik</div>
+        <div class="feature-item"><span class="feature-icon">📊</span> Progress</div>
+        <div class="feature-item"><span class="feature-icon">🔔</span> Eslatma</div>
+        <div class="feature-item"><span class="feature-icon">🌙</span> Dark Mode</div>
+      </div>
+
+      <!-- Telegram login button -->
+      <a href="https://t.me/vazifatodobot?start=webapp" id="telegramBtn" class="telegram-btn" target="_blank">
+        <svg class="telegram-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 0C10.745 0 0 10.745 0 24s10.745 24 24 24 24-10.745 24-24S37.255 0 24 0z" fill="white" fill-opacity="0.2"/>
+          <path d="M10.5 23.5l5.5 2 2.5 7.5 3-4 5 3.5 7-16.5-23 7.5z" fill="white"/>
+          <path d="M16 25.5l1.5 7.5 2.5-4.5" fill="white" fill-opacity="0.7"/>
+        </svg>
+        Telegram orqali kirish
+      </a>
+
+      <div class="divider">yoki</div>
+
+      <button class="demo-btn" onclick="enterAsGuest()">
+        👤 Mehmon sifatida kirish
+      </button>
+    </div>
+
+    <!-- Already logged in section -->
+    <div class="already-logged" id="loggedSection">
+      <div class="user-avatar" id="userAvatar">👤</div>
+      <div class="welcome-text">Xush kelibsiz, <span id="userName">Foydalanuvchi</span>!</div>
+      <p class="login-subtitle" style="margin-bottom:16px;">Vazifalaringiz tayyor ✨</p>
+      <button class="enter-btn" onclick="goToApp()">
+        🚀 Ilovaga kirish
+      </button>
+      <button class="demo-btn" onclick="logout()" style="margin-top:8px;">🚪 Chiqish</button>
+    </div>
+
+    <p class="footer-text">
+      Bot: <a href="https://t.me/vazifatodobot" target="_blank">@vazifatodobot</a> &nbsp;|&nbsp;
+      Powered by <strong>VazifaBot</strong>
+    </p>
+  </div>
+
+  <script>
+    // ---- Particles ----
+    const container = document.getElementById('particles');
+    const colors = ['#6C5CE7','#00CEC9','#FD79A8','#FDCB6E','#A29BFE'];
+    for (let i = 0; i < 18; i++) {
+      const p = document.createElement('div');
+      p.classList.add('particle');
+      const size = Math.random() * 60 + 20;
+      p.style.cssText = `
+        width:${size}px; height:${size}px;
+        left:${Math.random()*100}%;
+        background:${colors[Math.floor(Math.random()*colors.length)]};
+        animation-duration:${Math.random()*15+10}s;
+        animation-delay:${Math.random()*-20}s;
+      `;
+      container.appendChild(p);
+    }
+
+    // ---- Check URL params (from Telegram bot redirect) ----
+    const params = new URLSearchParams(window.location.search);
+    const tid  = params.get('tid');
+    const name = params.get('name');
+    const photo = params.get('photo');
+
+    if (tid && name) {
+      const user = { tid, name: decodeURIComponent(name), photo: photo || '', loginTime: Date.now() };
+      localStorage.setItem('vzb_user', JSON.stringify(user));
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // ---- Check if already logged in ----
+    function checkAuth() {
+      const raw = localStorage.getItem('vzb_user');
+      if (!raw) return;
+      const user = JSON.parse(raw);
+      document.getElementById('authSection').style.display = 'none';
+      const ls = document.getElementById('loggedSection');
+      ls.style.display = 'flex';
+      document.getElementById('userName').textContent = user.name;
+      const av = document.getElementById('userAvatar');
+      if (user.photo) {
+        av.style.backgroundImage = `url(${user.photo})`;
+        av.style.backgroundSize = 'cover';
+        av.textContent = '';
+      } else {
+        av.textContent = user.name.charAt(0).toUpperCase();
+      }
+    }
+    checkAuth();
+
+    function goToApp() { window.location.href = 'app.html'; }
+
+    function enterAsGuest() {
+      const user = { tid: 'guest_' + Date.now(), name: 'Mehmon', photo: '', loginTime: Date.now(), isGuest: true };
+      localStorage.setItem('vzb_user', JSON.stringify(user));
+      window.location.href = 'app.html';
+    }
+
+    function logout() {
+      localStorage.removeItem('vzb_user');
+      document.getElementById('authSection').style.display = 'block';
+      document.getElementById('loggedSection').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
