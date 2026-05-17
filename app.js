@@ -73,6 +73,19 @@ async function recheckSub() {
   if (errEl) errEl.style.display = 'block';
 }
 
+// ---- Activity Tracking (adminga yuborish) ----
+function logActivity(action, detail) {
+  if (!user || user.isGuest) return;
+  try {
+    const origin = window.location.origin;
+    fetch(`${origin}/api/activity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.tid, userName: user.name, action, detail })
+    }).catch(() => {});
+  } catch {}
+}
+
 // ---- State ----
 let tasks = JSON.parse(localStorage.getItem('vzb_tasks') || '[]');
 let currentFilter    = 'all';
@@ -112,6 +125,7 @@ function init() {
   scheduleReminders();
   setGreeting();
   checkSubscription();
+  logActivity('login', 'Ilovaga kirdi');
 }
 
 function loadUser() {
@@ -375,6 +389,7 @@ function addTask() {
   renderAll();
   showToast('Vazifa qo\'shildi!', 'success', '✅');
   confetti();
+  logActivity('add', `Vazifa: ${task.text}`);
 }
 
 function toggleTask(id, done) {
@@ -384,18 +399,21 @@ function toggleTask(id, done) {
   task.doneAt = done ? Date.now() : null;
   saveTasks();
   renderAll();
-  if (done) showToast('Barakalla! Vazifa bajarildi 🎉', 'success', '🏆');
+  if (done) { showToast('Barakalla! Vazifa bajarildi 🎉', 'success', '🏆'); logActivity('done', `Bajarildi: ${task.text}`); }
+  else { logActivity('undone', `Qaytarildi: ${task.text}`); }
 }
 
 function deleteTask(id, cardEl) {
   cardEl.style.transition = 'all 0.3s ease';
   cardEl.style.opacity  = '0';
   cardEl.style.transform = 'translateX(100px)';
+  const taskText = tasks.find(t => t.id === id)?.text || '';
   setTimeout(() => {
     tasks = tasks.filter(t => t.id !== id);
     saveTasks();
     renderAll();
   }, 280);
+  logActivity('delete', `O'chirildi: ${taskText}`);
   showToast('Vazifa o\'chirildi', 'info', '🗑️');
 }
 
@@ -461,6 +479,7 @@ function saveEdit() {
   renderAll();
   closeEditModal();
   showToast('Vazifa yangilandi!', 'success', '✅');
+  logActivity('edit', `Tahrirlandi: ${task.text}`);
 }
 
 function updateCharCount(len) {
@@ -602,6 +621,7 @@ function exportTasks() {
   a.download = `vazifalar_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   showToast('Vazifalar eksport qilindi!', 'success', '📤');
+  logActivity('export', `${tasks.length} ta vazifa eksport qilindi`);
 }
 
 // ---- Event Listeners ----
@@ -711,6 +731,7 @@ function setupEventListeners() {
     tasks = tasks.filter(t => !t.done);
     saveTasks(); renderAll();
     showToast(`${count} ta bajarilgan vazifa tozalandi`, 'success', '🧹');
+    logActivity('clear', `${count} ta vazifa tozalandi`);
     closeSidebar();
   });
 
