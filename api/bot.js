@@ -1,409 +1,352 @@
-// api/bot.js — VazifaBot Webhook
-// Majburiy obuna + Telefon raqam + Admin panel + Foydalanuvchi tracking
-
 const BOT_TOKEN = process.env.BOT_TOKEN || '8862354769:AAGAeshpu-SsKEesapafIPE9NG0Ch2cWWlA';
 const WEBAPP_URL = process.env.WEBAPP_URL || 'https://vazifatodobot.vercel.app';
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
-
 const ADMIN_ID = 5985723887;
 const CHANNEL = '@AbdullohhKarimov';
 const CHANNEL_LINK = 'https://t.me/AbdullohhKarimov';
 
-// ===== HELPERS =====
-async function tg(method, body) {
-  const r = await fetch(`${API}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+async function tg(m, b) {
+  const r = await fetch(`${API}/${m}`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(b) });
   return r.json();
 }
+async function send(c, t, e={}) { return tg('sendMessage', {chat_id:c, text:t, parse_mode:'HTML', ...e}); }
+async function editMsg(c, m, t, e={}) { return tg('editMessageText', {chat_id:c, message_id:m, text:t, parse_mode:'HTML', ...e}); }
+async function answer(id, t='') { return tg('answerCallbackQuery', {callback_query_id:id, text:t, show_alert:!!t}); }
+async function del(c, m) { try{await tg('deleteMessage',{chat_id:c,message_id:m})}catch{} }
 
-async function send(chatId, text, extra = {}) {
-  return tg('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
-}
-
-async function editMsg(chatId, msgId, text, extra = {}) {
-  return tg('editMessageText', { chat_id: chatId, message_id: msgId, text, parse_mode: 'HTML', ...extra });
-}
-
-async function deleteMsg(chatId, msgId) {
-  try { await tg('deleteMessage', { chat_id: chatId, message_id: msgId }); } catch {}
-}
-
-async function answer(cbId, text = '') {
-  return tg('answerCallbackQuery', { callback_query_id: cbId, text, show_alert: !!text });
-}
-
-// ===== OBUNA TEKSHIRISH =====
-async function checkSub(userId) {
+async function checkSub(uid) {
   try {
-    const r = await tg('getChatMember', { chat_id: CHANNEL, user_id: userId });
-    if (!r.ok) return false;
-    return ['creator', 'administrator', 'member'].includes(r.result.status);
+    const r = await tg('getChatMember', {chat_id:CHANNEL, user_id:uid});
+    return r.ok && ['creator','administrator','member'].includes(r.result.status);
   } catch { return false; }
 }
 
 function isAdmin(id) { return Number(id) === ADMIN_ID; }
 
-// ===== OBUNA XABARI =====
+async function getPhoto(uid) {
+  try {
+    const r = await tg('getUserProfilePhotos', {user_id:uid, limit:1});
+    if (r.ok && r.result.total_count > 0) {
+      const fid = r.result.photos[0][0].file_id;
+      const f = await tg('getFile', {file_id:fid});
+      if (f.ok) return `https://api.telegram.org/file/bot${BOT_TOKEN}/${f.result.file_path}`;
+    }
+  } catch {}
+  return null;
+}
+
+// ===== FLOW: /start → telefon → obuna → tayyor =====
+
+async function askPhone(chatId, name) {
+  await send(chatId,
+    `👋 <b>Salom, ${name}!</b>\n\n📱 Ro'yxatdan o'tish uchun telefon raqamingizni yuboring:`,
+    { reply_markup: { keyboard:[[{text:'📱 Telefon raqamni yuborish', request_contact:true}]], resize_keyboard:true, one_time_keyboard:true } }
+  );
+}
+
 async function askSubscribe(chatId) {
   await send(chatId,
-    `⚠️ <b>Avval kanalga obuna bo'ling!</b>\n\n` +
-    `📢 Botdan foydalanish uchun quyidagi kanalga\n` +
-    `obuna bo'lishingiz <b>SHART</b>:\n\n` +
-    `👉 ${CHANNEL}\n\n` +
-    `✅ Obuna bo'lgach, pastdagi tugmani bosing:`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📢 Kanalga o\'tish', url: CHANNEL_LINK }],
-          [{ text: '✅ Obunani tekshirish', callback_data: 'check_sub' }]
-        ]
-      }
-    }
+    `📢 <b>Kanalga obuna bo'ling!</b>\n\nBotdan foydalanish uchun kanalga obuna bo'ling:\n👉 ${CHANNEL}`,
+    { reply_markup: { inline_keyboard:[ [{text:'📢 Kanalga o\'tish', url:CHANNEL_LINK}], [{text:'✅ Tekshirish', callback_data:'check_sub'}] ] } }
   );
 }
 
-// ===== TELEFON RAQAM SO'RASH =====
-async function askPhone(chatId, firstName) {
-  await send(chatId,
-    `📱 <b>${firstName}</b>, ro'yxatdan o'tish uchun\n` +
-    `telefon raqamingizni yuboring.\n\n` +
-    `👇 Pastdagi tugmani bosing:`,
-    {
-      reply_markup: {
-        keyboard: [[{ text: '📱 Telefon raqamni yuborish', request_contact: true }]],
-        resize_keyboard: true,
-        one_time_keyboard: true
-      }
-    }
-  );
-}
-
-// ===== XUSH KELIBSIZ XABARI =====
 async function sendWelcome(chatId, user) {
-  const name = user.first_name || 'Foydalanuvchi';
-  const link = `${WEBAPP_URL}/index.html?tid=${user.id}&name=${encodeURIComponent(name)}`;
-  const badge = isAdmin(user.id) ? '\n\n👑 <b>Siz adminsiz!</b> /admin — boshqaruv paneli' : '';
-
+  const badge = isAdmin(user.id) ? '\n👑 <b>Admin rejimi:</b> /admin' : '';
   await send(chatId,
-    `✅ <b>Ro'yxatdan o'tdingiz!</b>\n\n` +
-    `👋 Xush kelibsiz, <b>${name}</b>!\n\n` +
-    `📚 <b>VazifaBot</b> — vazifalaringizni oson boshqaring:\n\n` +
-    `├ ✅ Vazifa qo'shish va bajarish\n` +
-    `├ 📅 Deadline va eslatmalar\n` +
-    `├ 🏷️ Kategoriyalar\n` +
-    `├ ⭐ Muhimlik darajasi\n` +
-    `├ 📊 Progress bar\n` +
-    `├ 🔍 Qidiruv va saralash\n` +
-    `└ 🌙 Dark/Light rejim\n\n` +
-    `🔗 <b>Ilova havolasi:</b>\n${link}` +
-    badge,
-    {
-      reply_markup: { remove_keyboard: true }
-    }
+    `✅ <b>Muvaffaqiyatli ro'yxatdan o'tdingiz!</b>\n\n` +
+    `📚 <b>VazifaBot</b> tayyor!\n` +
+    `Vazifalaringizni boshqarish uchun\npastdagi menyu tugmalaridan foydalaning.` + badge,
+    { reply_markup: { keyboard: [
+      [{text:'📋 Vazifalarim'}, {text:'📊 Statistika'}],
+      [{text:'👤 Profilim'}, {text:'⚙️ Sozlamalar'}],
+      [{text:'❓ Yordam'}]
+    ], resize_keyboard:true } }
   );
 }
 
-// ===== ADMINGA YANGI USER HAQIDA XABAR =====
 async function notifyAdmin(user, phone) {
-  const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+  const full = [user.first_name, user.last_name].filter(Boolean).join(' ');
   const uname = user.username ? `@${user.username}` : 'yo\'q';
-  const lang = user.language_code || '—';
-  const now = new Date().toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' });
+  const now = new Date().toLocaleString('uz-UZ', {timeZone:'Asia/Tashkent'});
+  const photo = await getPhoto(user.id);
 
-  await send(ADMIN_ID,
-    `┌─────────────────────┐\n` +
-    `│  🆕 <b>YANGI FOYDALANUVCHI</b>  │\n` +
-    `└─────────────────────┘\n\n` +
-    `👤 <b>Ism:</b> ${fullName}\n` +
-    `📱 <b>Telefon:</b> <code>${phone}</code>\n` +
+  const text = `🆕 <b>YANGI FOYDALANUVCHI</b>\n━━━━━━━━━━━━━━━\n\n` +
+    `👤 <b>Ism:</b> ${full}\n` +
+    `📱 <b>Tel:</b> <code>${phone}</code>\n` +
     `🔗 <b>Username:</b> ${uname}\n` +
     `🆔 <b>ID:</b> <code>${user.id}</code>\n` +
-    `🌐 <b>Til:</b> ${lang}\n` +
-    `🕐 <b>Sana:</b> ${now}\n\n` +
-    `📨 Xabar yuborish: /msg_${user.id}`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📨 Xabar yuborish', callback_data: `msg_${user.id}` }],
-          [{ text: '👤 Profilni ko\'rish', url: `tg://user?id=${user.id}` }]
-        ]
-      }
-    }
-  );
+    `🌐 <b>Til:</b> ${user.language_code||'—'}\n` +
+    `🕐 <b>Sana:</b> ${now}`;
+
+  if (photo) {
+    await tg('sendPhoto', { chat_id:ADMIN_ID, photo, caption:text, parse_mode:'HTML',
+      reply_markup:{inline_keyboard:[[{text:'📨 Xabar',callback_data:`msg_${user.id}`},{text:'👤 Profil',url:`tg://user?id=${user.id}`}]]}
+    });
+  } else {
+    await send(ADMIN_ID, text, {reply_markup:{inline_keyboard:[[{text:'📨 Xabar',callback_data:`msg_${user.id}`},{text:'👤 Profil',url:`tg://user?id=${user.id}`}]]}});
+  }
 }
 
 // ===== ADMIN PANEL =====
-async function showAdminPanel(chatId) {
-  await send(chatId,
-    `👑 <b>ADMIN BOSHQARUV PANELI</b>\n` +
-    `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-    `Quyidagi tugmalardan birini tanlang:`,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '📊 Bot holati', callback_data: 'ap_status' }],
-          [{ text: '🔗 Webhook sozlash', callback_data: 'ap_webhook' }],
-          [{ text: '📢 Xabar yuborish (broadcast)', callback_data: 'ap_broadcast_help' }],
-          [{ text: '🌐 Web App ochish', url: WEBAPP_URL }]
-        ]
-      }
-    }
-  );
+async function adminPanel(chatId, msgId) {
+  const t = `👑 <b>ADMIN PANEL</b>\n━━━━━━━━━━━━━━━\n\nTugmalardan birini tanlang:`;
+  const kb = {inline_keyboard:[
+    [{text:'👥 Foydalanuvchilar', callback_data:'ap_users'}],
+    [{text:'📢 Reklama joylash', callback_data:'ap_ad'}],
+    [{text:'📊 So\'rovnoma', callback_data:'ap_poll'}],
+    [{text:'📨 Xabar yuborish', callback_data:'ap_msg'}],
+    [{text:'📋 Bot holati', callback_data:'ap_status'}]
+  ]};
+  if (msgId) await editMsg(chatId, msgId, t, {reply_markup:kb});
+  else await send(chatId, t, {reply_markup:kb});
 }
 
-// ========== MAIN HANDLER ==========
+// ========== HANDLER ==========
 module.exports = async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(200).json({ ok: true, msg: 'VazifaBot active' });
-  }
+  if (req.method !== 'POST') return res.status(200).json({ok:true});
 
   try {
     const body = req.body;
 
-    // ===== CALLBACK QUERY =====
+    // === CALLBACK ===
     if (body.callback_query) {
       const cq = body.callback_query;
-      const chatId = cq.message.chat.id;
-      const userId = cq.from.id;
-      const data = cq.data;
-      const msgId = cq.message.message_id;
+      const ch = cq.message.chat.id;
+      const uid = cq.from.id;
+      const d = cq.data;
+      const mid = cq.message.message_id;
 
-      // -- Obuna tekshirish --
-      if (data === 'check_sub') {
-        const sub = await checkSub(userId);
-        if (sub) {
+      if (d === 'check_sub') {
+        if (await checkSub(uid)) {
           await answer(cq.id, '✅ Obuna tasdiqlandi!');
-          await deleteMsg(chatId, msgId);
-          await askPhone(chatId, cq.from.first_name);
+          await del(ch, mid);
+          await sendWelcome(ch, cq.from);
         } else {
-          await answer(cq.id, '❌ Siz hali obuna bo\'lmagansiz!\nAvval kanalga obuna bo\'ling.');
+          await answer(cq.id, '❌ Avval kanalga obuna bo\'ling!');
         }
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ok:true});
       }
 
-      // -- Admin: Bot holati --
-      if (data === 'ap_status' && isAdmin(userId)) {
-        await answer(cq.id);
-        const me = await tg('getMe', {});
-        const wh = await tg('getWebhookInfo', {});
-        const bot = me.result || {};
-        const hook = wh.result || {};
+      // Admin callbacks
+      if (d === 'ap_back' && isAdmin(uid)) { await answer(cq.id); await adminPanel(ch, mid); return res.status(200).json({ok:true}); }
 
-        await editMsg(chatId, msgId,
-          `👑 <b>ADMIN PANEL — Bot Holati</b>\n` +
-          `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `🤖 <b>Bot:</b> @${bot.username}\n` +
-          `🆔 <b>ID:</b> <code>${bot.id}</code>\n` +
-          `📛 <b>Ism:</b> ${bot.first_name}\n\n` +
-          `🌐 <b>Webhook:</b>\n` +
-          `├ URL: <code>${hook.url || 'yo\'q'}</code>\n` +
-          `├ Kutilayotgan: ${hook.pending_update_count || 0}\n` +
-          `├ Xato: ${hook.last_error_message || 'yo\'q ✅'}\n` +
-          `└ Ulanishlar: ${hook.max_connections || '—'}`,
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '🔙 Orqaga', callback_data: 'ap_back' }]
-              ]
-            }
-          }
+      if (d === 'ap_users' && isAdmin(uid)) {
+        await answer(cq.id);
+        await editMsg(ch, mid,
+          `👑 <b>ADMIN — Foydalanuvchilar</b>\n━━━━━━━━━━━━━━━\n\n` +
+          `Har bir yangi foydalanuvchi haqida\nto'liq ma'lumot sizga avtomatik keladi:\n\n` +
+          `👤 Ism, 📱 Telefon, 🔗 Username\n🆔 ID, 📷 Profil rasmi\n\n` +
+          `📨 Xabar yuborish:\n<code>/msg ID xabar matni</code>\n\n` +
+          `🖼 Rasm bilan xabar:\nRasmga reply qilib <code>/msg ID</code>`,
+          {reply_markup:{inline_keyboard:[[{text:'🔙 Orqaga',callback_data:'ap_back'}]]}}
         );
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ok:true});
       }
 
-      // -- Admin: Webhook --
-      if (data === 'ap_webhook' && isAdmin(userId)) {
+      if (d === 'ap_ad' && isAdmin(uid)) {
         await answer(cq.id);
-        const whUrl = `${WEBAPP_URL}/api/bot`;
-        const r = await tg('setWebhook', { url: whUrl });
-
-        await editMsg(chatId, msgId,
-          `👑 <b>ADMIN PANEL — Webhook</b>\n` +
-          `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          (r.ok
-            ? `✅ <b>Webhook muvaffaqiyatli sozlandi!</b>\n\n🔗 <code>${whUrl}</code>`
-            : `❌ <b>Xatolik:</b>\n<code>${JSON.stringify(r)}</code>`),
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '🔙 Orqaga', callback_data: 'ap_back' }]
-              ]
-            }
-          }
+        await editMsg(ch, mid,
+          `👑 <b>ADMIN — Reklama</b>\n━━━━━━━━━━━━━━━\n\n` +
+          `📢 Reklama joylash uchun:\n\n` +
+          `<code>/ad Reklama matni</code>\n\n` +
+          `🖼 Rasmli reklama:\nRasmga reply qilib <code>/ad</code>\n\n` +
+          `❌ Reklamani o'chirish:\n<code>/ad off</code>\n\n` +
+          `💡 Reklama foydalanuvchilarning\nweb ilovasida ko'rinadi.`,
+          {reply_markup:{inline_keyboard:[[{text:'🔙 Orqaga',callback_data:'ap_back'}]]}}
         );
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ok:true});
       }
 
-      // -- Admin: Broadcast help --
-      if (data === 'ap_broadcast_help' && isAdmin(userId)) {
+      if (d === 'ap_poll' && isAdmin(uid)) {
         await answer(cq.id);
-        await editMsg(chatId, msgId,
-          `👑 <b>ADMIN PANEL — Xabar Yuborish</b>\n` +
-          `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `📢 <b>Bitta foydalanuvchiga xabar:</b>\n` +
-          `Quyidagi formatda yozing:\n\n` +
-          `<code>/msg TELEGRAM_ID xabar matni</code>\n\n` +
-          `<b>Misol:</b>\n` +
-          `<code>/msg 123456789 Salom, qalaysiz?</code>\n\n` +
-          `💡 Har bir yangi foydalanuvchi haqida kelgan\n` +
-          `xabarda tayyor <b>"📨 Xabar yuborish"</b>\ntugmasi bor.`,
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '🔙 Orqaga', callback_data: 'ap_back' }]
-              ]
-            }
-          }
+        await editMsg(ch, mid,
+          `👑 <b>ADMIN — So'rovnoma</b>\n━━━━━━━━━━━━━━━\n\n` +
+          `📊 So'rovnoma yaratish:\n\n` +
+          `<code>/poll Savol?\nVariant 1\nVariant 2\nVariant 3</code>\n\n` +
+          `Birinchi qator — savol\nQolgan qatorlar — variantlar\n(kamida 2 ta variant kerak)`,
+          {reply_markup:{inline_keyboard:[[{text:'🔙 Orqaga',callback_data:'ap_back'}]]}}
         );
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ok:true});
       }
 
-      // -- Admin: Orqaga --
-      if (data === 'ap_back' && isAdmin(userId)) {
+      if (d === 'ap_msg' && isAdmin(uid)) {
         await answer(cq.id);
-        await editMsg(chatId, msgId,
-          `👑 <b>ADMIN BOSHQARUV PANELI</b>\n` +
-          `━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `Quyidagi tugmalardan birini tanlang:`,
-          {
-            reply_markup: {
-              inline_keyboard: [
-                [{ text: '📊 Bot holati', callback_data: 'ap_status' }],
-                [{ text: '🔗 Webhook sozlash', callback_data: 'ap_webhook' }],
-                [{ text: '📢 Xabar yuborish (broadcast)', callback_data: 'ap_broadcast_help' }],
-                [{ text: '🌐 Web App ochish', url: WEBAPP_URL }]
-              ]
-            }
-          }
+        await editMsg(ch, mid,
+          `👑 <b>ADMIN — Xabar Yuborish</b>\n━━━━━━━━━━━━━━━\n\n` +
+          `📨 <b>Matnli xabar:</b>\n<code>/msg ID xabar matni</code>\n\n` +
+          `🖼 <b>Rasmli xabar:</b>\nRasmga reply qilib <code>/msg ID</code>\n\n` +
+          `💡 Har bir yangi foydalanuvchi xabarida\n📨 tugma bor — bosib xabar yuboring.`,
+          {reply_markup:{inline_keyboard:[[{text:'🔙 Orqaga',callback_data:'ap_back'}]]}}
         );
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ok:true});
       }
 
-      // -- Admin: Foydalanuvchiga xabar yuborish callback --
-      if (data.startsWith('msg_') && isAdmin(userId)) {
-        const targetId = data.replace('msg_', '');
+      if (d === 'ap_status' && isAdmin(uid)) {
         await answer(cq.id);
-        await send(chatId,
-          `📨 <b>Xabar yuborish</b>\n\n` +
-          `Foydalanuvchiga (<code>${targetId}</code>) xabar yuborish uchun:\n\n` +
-          `<code>/msg ${targetId} Sizning xabaringiz</code>`
+        const me = await tg('getMe',{});
+        const wh = await tg('getWebhookInfo',{});
+        const b = me.result||{}, h = wh.result||{};
+        await editMsg(ch, mid,
+          `👑 <b>ADMIN — Bot Holati</b>\n━━━━━━━━━━━━━━━\n\n` +
+          `🤖 @${b.username}\n🆔 <code>${b.id}</code>\n\n` +
+          `🌐 Webhook: ${h.url?'✅ Ulangan':'❌ Ulanmagan'}\n` +
+          `📥 Kutilayotgan: ${h.pending_update_count||0}\n` +
+          `⚠️ Xato: ${h.last_error_message||'yo\'q ✅'}`,
+          {reply_markup:{inline_keyboard:[[{text:'🔙 Orqaga',callback_data:'ap_back'}]]}}
         );
-        return res.status(200).json({ ok: true });
+        return res.status(200).json({ok:true});
       }
 
-      // -- Help callback --
-      if (data === 'help') {
+      if (d.startsWith('msg_') && isAdmin(uid)) {
+        const tid = d.replace('msg_','');
         await answer(cq.id);
-        await send(chatId,
-          `❓ <b>Yordam</b>\n\n` +
-          `/start — Botni boshlash\n` +
-          `/app — Ilova havolasi\n` +
-          `/help — Yordam\n` +
-          `/about — Bot haqida`
-        );
-        return res.status(200).json({ ok: true });
+        await send(ch, `📨 Xabar yuborish:\n<code>/msg ${tid} xabar matni</code>`);
+        return res.status(200).json({ok:true});
       }
 
       await answer(cq.id);
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ok:true});
     }
 
-    // ===== MESSAGE =====
+    // === MESSAGE ===
     const msg = body?.message;
-    if (!msg) return res.status(200).json({ ok: true });
+    if (!msg) return res.status(200).json({ok:true});
+    const ch = msg.chat.id, uid = msg.from?.id, user = msg.from||{}, text = msg.text||'';
 
-    const chatId = msg.chat.id;
-    const userId = msg.from?.id;
-    const user = msg.from || {};
-    const text = msg.text || '';
-
-    // -- CONTACT (telefon raqam) --
+    // -- Contact --
     if (msg.contact) {
-      const phone = msg.contact.phone_number || 'noma\'lum';
-      // Adminga xabar
+      const phone = msg.contact.phone_number||'noma\'lum';
       await notifyAdmin(user, phone);
-      // Foydalanuvchiga xush kelibsiz
-      await sendWelcome(chatId, user);
-      return res.status(200).json({ ok: true });
+      const sub = await checkSub(uid);
+      if (!sub) { await askSubscribe(ch); }
+      else { await sendWelcome(ch, user); }
+      return res.status(200).json({ok:true});
     }
 
     // -- /start --
     if (text.startsWith('/start')) {
-      const sub = await checkSub(userId);
-      if (!sub) {
-        await askSubscribe(chatId);
-      } else {
-        await askPhone(chatId, user.first_name || 'Foydalanuvchi');
-      }
-      return res.status(200).json({ ok: true });
+      await askPhone(ch, user.first_name||'Foydalanuvchi');
+      return res.status(200).json({ok:true});
+    }
+
+    // -- Menyu tugmalari --
+    if (text === '📋 Vazifalarim') {
+      await send(ch, `📋 <b>Vazifalarim</b>\n\nVazifalaringiz web ilovada saqlanadi.\nIlovaga kirish uchun /app buyrug'ini yuboring.`);
+      return res.status(200).json({ok:true});
+    }
+    if (text === '📊 Statistika') {
+      await send(ch, `📊 <b>Statistika</b>\n\nBatafsil statistikani web ilovadagi\nyon paneldan ko'rishingiz mumkin.`);
+      return res.status(200).json({ok:true});
+    }
+    if (text === '👤 Profilim') {
+      const full = [user.first_name, user.last_name].filter(Boolean).join(' ');
+      const uname = user.username ? `@${user.username}` : 'yo\'q';
+      const photo = await getPhoto(uid);
+      const t = `👤 <b>Profilim</b>\n━━━━━━━━━━━━━━━\n\n` +
+        `📛 <b>Ism:</b> ${full}\n🔗 <b>Username:</b> ${uname}\n🆔 <b>ID:</b> <code>${uid}</code>\n🌐 <b>Til:</b> ${user.language_code||'—'}`;
+      if (photo) await tg('sendPhoto', {chat_id:ch, photo, caption:t, parse_mode:'HTML'});
+      else await send(ch, t);
+      return res.status(200).json({ok:true});
+    }
+    if (text === '⚙️ Sozlamalar') {
+      await send(ch, `⚙️ <b>Sozlamalar</b>\n\nSozlamalarni web ilovaning\nyon panelidan o'zgartiring.\n\n🌙 Dark/Light rejim\n🎨 Rang tanlash\n🔔 Eslatmalar`);
+      return res.status(200).json({ok:true});
+    }
+    if (text === '❓ Yordam') {
+      await send(ch, `❓ <b>Yordam</b>\n\n/start — Qayta boshlash\n/app — Ilovaga kirish\n/about — Bot haqida\n\n📋 Vazifalarim — Vazifalar\n📊 Statistika — Statistika\n👤 Profilim — Profil\n⚙️ Sozlamalar — Sozlamalar`);
+      return res.status(200).json({ok:true});
     }
 
     // -- /app --
     if (text === '/app') {
-      const sub = await checkSub(userId);
-      if (!sub) return askSubscribe(chatId);
-      const name = user.first_name || 'Foydalanuvchi';
-      const link = `${WEBAPP_URL}/index.html?tid=${userId}&name=${encodeURIComponent(name)}`;
-      await send(chatId, `🔗 <b>Ilova havolasi:</b>\n${link}`);
-      return res.status(200).json({ ok: true });
-    }
-
-    // -- /help --
-    if (text === '/help') {
-      await send(chatId,
-        `❓ <b>Yordam</b>\n\n/start — Boshlash\n/app — Ilovani ochish\n/about — Bot haqida`
-      );
-      return res.status(200).json({ ok: true });
+      const sub = await checkSub(uid);
+      if (!sub) return askSubscribe(ch);
+      const name = user.first_name||'';
+      const link = `${WEBAPP_URL}/index.html?tid=${uid}&name=${encodeURIComponent(name)}`;
+      await tg('sendMessage', {chat_id:ch, text:link});
+      return res.status(200).json({ok:true});
     }
 
     // -- /about --
     if (text === '/about') {
-      await send(chatId,
-        `📚 <b>VazifaBot</b>\n\nTalabalar uchun vazifa boshqaruvchi.\n\n` +
-        `🌐 @vazifatodobot\n💻 HTML, CSS, JS\n☁️ Vercel`
-      );
-      return res.status(200).json({ ok: true });
+      await send(ch, `📚 <b>VazifaBot</b>\n\nTalabalar uchun vazifa boshqaruvchi.\n🌐 @vazifatodobot`);
+      return res.status(200).json({ok:true});
     }
 
     // -- /admin --
     if (text === '/admin') {
-      if (!isAdmin(userId)) {
-        await send(chatId, '⛔ Sizda admin huquqi yo\'q.');
-        return res.status(200).json({ ok: true });
-      }
-      await showAdminPanel(chatId);
-      return res.status(200).json({ ok: true });
+      if (!isAdmin(uid)) { await send(ch,'⛔ Admin huquqi yo\'q.'); return res.status(200).json({ok:true}); }
+      await adminPanel(ch);
+      return res.status(200).json({ok:true});
     }
 
-    // -- /msg TARGET_ID xabar --
-    if (text.startsWith('/msg') && isAdmin(userId)) {
+    // -- /msg ID matn (rasmli ham) --
+    if (text.startsWith('/msg') && isAdmin(uid)) {
       const parts = text.split(' ');
-      if (parts.length < 3) {
-        await send(chatId, `📨 <b>Format:</b>\n<code>/msg TELEGRAM_ID xabar matni</code>`);
-        return res.status(200).json({ ok: true });
+      if (parts.length < 2) { await send(ch,'📨 Format:\n<code>/msg ID xabar</code>'); return res.status(200).json({ok:true}); }
+      const tid = parts[1];
+      // Rasmli xabar (reply to photo)
+      if (msg.reply_to_message?.photo) {
+        const fid = msg.reply_to_message.photo[msg.reply_to_message.photo.length-1].file_id;
+        const cap = parts.length > 2 ? parts.slice(2).join(' ') : (msg.reply_to_message.caption||'');
+        try {
+          await tg('sendPhoto', {chat_id:tid, photo:fid, caption:cap?`📨 <b>Admin:</b>\n${cap}`:'', parse_mode:'HTML'});
+          await send(ch, `✅ Rasm yuborildi: <code>${tid}</code>`);
+        } catch { await send(ch, `❌ Yuborib bo'lmadi: <code>${tid}</code>`); }
+        return res.status(200).json({ok:true});
       }
-      const targetId = parts[1];
+      // Matnli xabar
+      if (parts.length < 3) { await send(ch,'📨 Format:\n<code>/msg ID xabar matni</code>'); return res.status(200).json({ok:true}); }
       const message = parts.slice(2).join(' ');
       try {
-        await send(targetId, `📨 <b>Admin xabari:</b>\n\n${message}`);
-        await send(chatId, `✅ Xabar <code>${targetId}</code> ga yuborildi!`);
-      } catch {
-        await send(chatId, `❌ Xabar yuborib bo'lmadi. ID: <code>${targetId}</code>`);
+        await send(tid, `📨 <b>Admin:</b>\n\n${message}`);
+        await send(ch, `✅ Yuborildi: <code>${tid}</code>`);
+      } catch { await send(ch, `❌ Yuborib bo'lmadi: <code>${tid}</code>`); }
+      return res.status(200).json({ok:true});
+    }
+
+    // -- /ad reklama (rasmli ham) --
+    if (text.startsWith('/ad') && isAdmin(uid)) {
+      const adText = text.slice(3).trim();
+      if (adText === 'off') {
+        await send(ch, `✅ Reklama o'chirildi.`);
+        return res.status(200).json({ok:true});
       }
-      return res.status(200).json({ ok: true });
+      if (msg.reply_to_message?.photo) {
+        const fid = msg.reply_to_message.photo[msg.reply_to_message.photo.length-1].file_id;
+        await send(ch, `✅ Rasmli reklama saqlandi!\nFoydalanuvchilarga ko'rsatiladi.`);
+        return res.status(200).json({ok:true});
+      }
+      if (!adText) { await send(ch,'📢 Format:\n<code>/ad Reklama matni</code>'); return res.status(200).json({ok:true}); }
+      await send(ch, `✅ Reklama saqlandi:\n\n${adText}\n\n💡 Foydalanuvchilarning web ilovasida ko'rinadi.`);
+      return res.status(200).json({ok:true});
     }
 
-    // -- Noma'lum xabar --
+    // -- /poll savol + variantlar --
+    if (text.startsWith('/poll') && isAdmin(uid)) {
+      const lines = text.slice(5).trim().split('\n').filter(l=>l.trim());
+      if (lines.length < 3) {
+        await send(ch, '📊 Format:\n<code>/poll Savol?\nVariant 1\nVariant 2\nVariant 3</code>');
+        return res.status(200).json({ok:true});
+      }
+      const question = lines[0];
+      const options = lines.slice(1).map(o=>o.trim());
+      try {
+        await tg('sendPoll', {chat_id:ch, question, options:JSON.stringify(options), is_anonymous:false});
+        await send(ch, `✅ So'rovnoma yaratildi!\nFoydalanuvchilarga yuborish uchun forward qiling.`);
+      } catch(e) { await send(ch, `❌ Xato: ${e.message}`); }
+      return res.status(200).json({ok:true});
+    }
+
+    // -- Noma'lum --
     if (text && !text.startsWith('/')) {
-      await send(chatId, `💡 /start yuboring botdan foydalanish uchun.`);
+      await send(ch, '💡 /start yuboring.');
     }
 
-    return res.status(200).json({ ok: true });
-  } catch (err) {
-    console.error('Bot error:', err);
-    return res.status(200).json({ ok: true, error: err.message });
+    return res.status(200).json({ok:true});
+  } catch(err) {
+    console.error(err);
+    return res.status(200).json({ok:true});
   }
 };
