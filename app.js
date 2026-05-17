@@ -9,6 +9,70 @@
 const user = JSON.parse(localStorage.getItem('vzb_user') || 'null');
 if (!user) { window.location.href = 'index.html'; }
 
+// ---- Subscription check ----
+const CHANNEL_LINK = 'https://t.me/AbdullohhKarimov';
+
+async function checkSubscription() {
+  // Mehmonlar uchun tekshirmaymiz
+  if (!user || user.isGuest || !user.tid || user.tid.startsWith('guest_')) return;
+  // Allaqachon tasdiqlangan
+  if (localStorage.getItem('vzb_sub_ok') === 'true') return;
+
+  try {
+    const origin = window.location.origin;
+    const r = await fetch(`${origin}/api/check-sub?uid=${user.tid}`);
+    const data = await r.json();
+    if (data.subscribed) {
+      localStorage.setItem('vzb_sub_ok', 'true');
+      return;
+    }
+  } catch {}
+
+  // Obuna bo'lmagan — modal ko'rsat
+  showSubModal();
+}
+
+function showSubModal() {
+  const overlay = document.createElement('div');
+  overlay.id = 'subModal';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.3s ease';
+  overlay.innerHTML = `
+    <div style="background:var(--bg-card);border:1px solid var(--glass-border);border-radius:24px;padding:40px 32px;max-width:400px;width:100%;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,0.5);animation:scaleIn 0.35s cubic-bezier(0.34,1.56,0.64,1)">
+      <div style="font-size:3.5rem;margin-bottom:16px">📢</div>
+      <h2 style="font-family:'Nunito',sans-serif;font-size:1.4rem;font-weight:900;margin-bottom:8px;color:var(--text-primary)">Kanalga obuna bo'ling!</h2>
+      <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;margin-bottom:24px">
+        Ilovadan foydalanish uchun rasmiy kanalga<br>obuna bo'lishingiz <b style="color:var(--danger)">shart</b>.
+      </p>
+      <a href="${CHANNEL_LINK}" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:linear-gradient(135deg,#2AABEE,#229ED9);color:white;font-weight:800;font-size:0.95rem;border-radius:14px;text-decoration:none;margin-bottom:12px;box-shadow:0 8px 24px rgba(42,171,238,0.4)">
+        📢 Kanalga o'tish
+      </a>
+      <button onclick="recheckSub()" style="width:100%;padding:14px;background:linear-gradient(135deg,var(--primary),var(--accent));color:white;font-weight:800;font-size:0.95rem;border:none;border-radius:14px;cursor:pointer;box-shadow:0 8px 24px rgba(108,92,231,0.4)">
+        ✅ Obunani tekshirish
+      </button>
+      <p id="subError" style="color:var(--danger);font-size:0.8rem;margin-top:12px;display:none">❌ Siz hali obuna bo'lmagansiz!</p>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+async function recheckSub() {
+  const errEl = document.getElementById('subError');
+  if (errEl) errEl.style.display = 'none';
+  try {
+    const origin = window.location.origin;
+    const r = await fetch(`${origin}/api/check-sub?uid=${user.tid}`);
+    const data = await r.json();
+    if (data.subscribed) {
+      localStorage.setItem('vzb_sub_ok', 'true');
+      const modal = document.getElementById('subModal');
+      if (modal) modal.remove();
+      showToast('✅ Obuna tasdiqlandi!', 'success', '🎉');
+      return;
+    }
+  } catch {}
+  if (errEl) errEl.style.display = 'block';
+}
+
 // ---- State ----
 let tasks = JSON.parse(localStorage.getItem('vzb_tasks') || '[]');
 let currentFilter    = 'all';
@@ -47,6 +111,7 @@ function init() {
   setupEventListeners();
   scheduleReminders();
   setGreeting();
+  checkSubscription();
 }
 
 function loadUser() {
