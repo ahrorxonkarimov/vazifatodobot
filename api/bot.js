@@ -71,20 +71,36 @@ async function notifyAdmin(user, phone) {
   const now = new Date().toLocaleString('uz-UZ', {timeZone:'Asia/Tashkent'});
   const photo = await getPhoto(user.id);
 
-  const text = `🆕 <b>YANGI FOYDALANUVCHI</b>\n━━━━━━━━━━━━━━━\n\n` +
-    `👤 <b>Ism:</b> ${full}\n` +
-    `📱 <b>Tel:</b> <code>${phone}</code>\n` +
-    `🔗 <b>Username:</b> ${uname}\n` +
-    `🆔 <b>ID:</b> <code>${user.id}</code>\n` +
-    `🌐 <b>Til:</b> ${user.language_code||'—'}\n` +
-    `🕐 <b>Sana:</b> ${now}`;
+  // Foydalanuvchini bazaga saqlash
+  try {
+    await fetch(`${WEBAPP_URL}/api/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: user.id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        username: user.username,
+        language_code: user.language_code,
+        phone: phone
+      })
+    });
+  } catch {}
+
+  const text = `\u{1F195} <b>YANGI FOYDALANUVCHI</b>\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n` +
+    `\u{1F464} <b>Ism:</b> ${full}\n` +
+    `\u{1F4F1} <b>Tel:</b> <code>${phone}</code>\n` +
+    `\u{1F517} <b>Username:</b> ${uname}\n` +
+    `\u{1F194} <b>ID:</b> <code>${user.id}</code>\n` +
+    `\u{1F310} <b>Til:</b> ${user.language_code||'\u2014'}\n` +
+    `\u{1F550} <b>Sana:</b> ${now}`;
 
   if (photo) {
     await tg('sendPhoto', { chat_id:ADMIN_ID, photo, caption:text, parse_mode:'HTML',
-      reply_markup:{inline_keyboard:[[{text:'📨 Xabar',callback_data:`msg_${user.id}`},{text:'👤 Profil',url:`tg://user?id=${user.id}`}]]}
+      reply_markup:{inline_keyboard:[[{text:'\u{1F4E8} Xabar',callback_data:`msg_${user.id}`},{text:'\u{1F464} Profil',url:`tg://user?id=${user.id}`}]]}
     });
   } else {
-    await send(ADMIN_ID, text, {reply_markup:{inline_keyboard:[[{text:'📨 Xabar',callback_data:`msg_${user.id}`},{text:'👤 Profil',url:`tg://user?id=${user.id}`}]]}});
+    await send(ADMIN_ID, text, {reply_markup:{inline_keyboard:[[{text:'\u{1F4E8} Xabar',callback_data:`msg_${user.id}`},{text:'\u{1F464} Profil',url:`tg://user?id=${user.id}`}]]}});
   }
 }
 
@@ -133,14 +149,30 @@ module.exports = async function handler(req, res) {
 
       if (d === 'ap_users' && isAdmin(uid)) {
         await answer(cq.id);
-        await editMsg(ch, mid,
-          `👑 <b>ADMIN — Foydalanuvchilar</b>\n━━━━━━━━━━━━━━━\n\n` +
-          `Har bir yangi foydalanuvchi haqida\nto'liq ma'lumot sizga avtomatik keladi:\n\n` +
-          `👤 Ism, 📱 Telefon, 🔗 Username\n🆔 ID, 📷 Profil rasmi\n\n` +
-          `📨 Xabar yuborish:\n<code>/msg ID xabar matni</code>\n\n` +
-          `🖼 Rasm bilan xabar:\nRasmga reply qilib <code>/msg ID</code>`,
-          {reply_markup:{inline_keyboard:[[{text:'🔙 Orqaga',callback_data:'ap_back'}]]}}
-        );
+        // Foydalanuvchilar ro'yxatini API dan olish
+        let userListText = '';
+        try {
+          const r = await fetch(`${WEBAPP_URL}/api/users`);
+          const data = await r.json();
+          if (data.ok && data.users.length > 0) {
+            userListText = `\u{1F451} <b>FOYDALANUVCHILAR</b> (${data.count} ta)\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\n`;
+            data.users.slice(-20).forEach((u, i) => {
+              const name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+              const uname = u.username ? `@${u.username}` : '';
+              userListText += `<b>${i+1}.</b> ${name} ${uname}\n`;
+              userListText += `   \u{1F4F1} <code>${u.phone || 'yo\'q'}</code>  \u{1F194} <code>${u.id}</code>\n`;
+            });
+            if (data.count > 20) userListText += `\n... va yana ${data.count - 20} ta`;
+          } else {
+            userListText = `\u{1F451} <b>FOYDALANUVCHILAR</b>\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nHozircha foydalanuvchilar yo'q.\nYangi foydalanuvchi /start bosganda\nbu yerda ko'rinadi.`;
+          }
+        } catch {
+          userListText = `\u{1F451} <b>FOYDALANUVCHILAR</b>\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nMa'lumotlarni yuklab bo'lmadi.`;
+        }
+        userListText += `\n\n\u{1F4E8} Xabar: <code>/msg ID matn</code>`;
+        await editMsg(ch, mid, userListText, {
+          reply_markup:{inline_keyboard:[[{text:'\u{1F504} Yangilash',callback_data:'ap_users'},{text:'\u{1F519} Orqaga',callback_data:'ap_back'}]]}
+        });
         return res.status(200).json({ok:true});
       }
 
