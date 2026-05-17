@@ -1,4 +1,4 @@
-// api/bot.js — Vercel Serverless Function
+// api/bot.js — Vercel Serverless Function (CommonJS format)
 // Telegram Bot Webhook handler
 
 const BOT_TOKEN = process.env.BOT_TOKEN || '8862354769:AAGAeshpu-SsKEesapafIPE9NG0Ch2cWWlA';
@@ -23,7 +23,7 @@ async function sendMessage(chatId, text, extra = {}) {
   });
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(200).json({ ok: true, message: 'VazifaBot webhook is active!' });
   }
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
         `• 📊 Progress kuzatuvi\n` +
         `• 🌙 Dark/Light rejim\n\n` +
         `Telegram ID'ingiz: <code>${userId}</code>\n\n` +
-        `👇 <b>Pastdagi tugmani bosing va boshlangyuch!</b>`,
+        `👇 <b>Pastdagi tugmani bosing va boshlang!</b>`,
         {
           reply_markup: {
             inline_keyboard: [[
@@ -162,4 +162,4 @@ export default async function handler(req, res) {
     console.error('Bot error:', err);
     return res.status(200).json({ ok: true, error: err.message });
   }
-}
+};
