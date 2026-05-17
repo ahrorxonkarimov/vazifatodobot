@@ -17,9 +17,5 @@
       "src": "/(.*)",
       "dest": "/$1"
     }
-  ],
-  "env": {
-    "BOT_TOKEN": "@bot_token",
-    "WEBAPP_URL": "@webapp_url"
-  }
+  ]
 }
